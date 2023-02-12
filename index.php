@@ -28,6 +28,7 @@ require 'backend/dbh.php';
         </div>
     </div>
     <h1 id="currentBac"></h1>
+    <h2 id="time2max"></h2>
     <!-- current BAC -->
     <!-- time until max bac (if increasing) -->
     <!-- time until 0 bac -->
@@ -92,7 +93,6 @@ require 'backend/dbh.php';
 
   const ctx = document.getElementById('chart');
 
-    // (volume * percent * converToGrams) / (bodyWeight(grams)*sexConstant) * 100
     <?php
     if(!$loggedIn) {
         die();
@@ -106,18 +106,16 @@ require 'backend/dbh.php';
     while($r = $re->fetch_assoc()) {
         array_push($drinkInfo, $r);
         $drinkTimes[$r['dateTime']] = $index++;
-        // array_push($drinkTimes, [$r['dateTime'], $index++]);
     }
     ?>
   
   <?php
   echo "const datapoints = [";
-//   var_dump($drinkInfo);
   $firstDrink = new DateTime($drinkInfo[0]["dateTime"]);
   $lastDrink = new DateTime($drinkInfo[sizeof($drinkInfo)-1]["dateTime"]);
-//   var_dump($firstDrink);
 $currBac = 0;
 $allBacs = [];
+$maxBac = [0,0];
   for($i = $firstDrink; $i <= $lastDrink || $currBac > 0; $i->modify("+5 minutes")) {
     if(array_key_exists($i->format("Y-m-d H:i:s"), $drinkTimes)) {
         // echo 'yup';
@@ -131,10 +129,14 @@ $allBacs = [];
         echo "{x: new Date('".str_replace(' ', 'T', $i->format('Y-m-d H:i:s'))."'), y: ".($bc)."},\r\n";
     }
     $currBac = $bc;
+    if ($currBac > $maxBac[0]) {
+        $maxBac[0] = $currBac;
+        $maxBac[1] = str_replace(' ', 'T', $i->format('Y-m-d H:i:s'));
+    }
     $allBacs[str_replace(' ', 'T', $i->format('Y-m-d H:i:s'))] = $currBac;
   }
   echo "];\r\n";
-echo "const allBacs = " . json_encode($allBacs);
+  echo "const allBacs = " . json_encode($allBacs);
   ?>
 
   new Chart(ctx, {
@@ -177,30 +179,24 @@ echo "const allBacs = " . json_encode($allBacs);
   });
 
 let currentBac = document.getElementById("currentBac");
-setInterval(function() {
-    // currentBac = allBacs['2023-02-12 01:50:00']
+let time2max = document.getElementById("time2max");
+let maxBacTime = "<?=$maxBac[1]?>"
+updateBac();
+setInterval(updateBac(), 60000);
+function updateBac() {
     currTime = (new Date());
     currTime = new Date(new Date().setTime(currTime.getTime()));
-
-
-    
-    // currTime = currTime.toLocaleString('en-US', {
-    //     timeZone: 'America/New_York'
-    // });
     currTime = currTime.toISOString().split(":");
-
-    currTime = currTime[0].split("T")[0]+"T"+(currTime[0].split("T")[1]-5).toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false}) +":"+ Math.ceil(currTime[1]/5)*5+":00";
-
-
-
-    // currTime = currTime[0] + ":" + currTime[1] + ":00";
+    currTime = currTime[0].split("T")[0]+"T"+(currTime[0].split("T")[1]-5).toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false}) +":"+ (Math.ceil(currTime[1]/5)*5).toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false})+":00";
     if (allBacs[currTime] == undefined) {
-        currentBac.textContent = allBacs[currTime];
+        currentBac.innerHTML = "";
     } else {
         currentBac.innerHTML = "Current BAC: <b>"+allBacs[currTime].toFixed(3)+"</b>";
     }
-    // currentBac.textContent = currTime;
-}, 1000);
+    if(maxBacTime > currTime) {
+        time2max.innerHTML = "Time until <?=round($maxBac[0],3)?>: " + (new Date(maxBacTime) - new Date(currTime)) / 60000 + " minutes";
+    }
+}
 </script>
 <?php
 function getBAC($currentBac, $alcGrams) {
