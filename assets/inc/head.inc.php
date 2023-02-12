@@ -1,5 +1,4 @@
 <?php
-session_start();
 if(isset($_SESSION) && $_SESSION != NULL){
     $loggedIn = true;
 }else{
