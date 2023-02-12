@@ -1,4 +1,4 @@
-# bactobac
+# BACtoBAC
 This is a Hackyltics '23 Project created by Aishik Dhori, Alex Frawley, and Justin Xia.
 <h2>Introduction</h2>
 We wanted to create a blood alcohol content (BAC) tracking tool that was more accurate than what is currently availible. Most tools currently availlible 
