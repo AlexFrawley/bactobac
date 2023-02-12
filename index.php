@@ -1,3 +1,6 @@
+<?php
+session_start();
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -27,6 +30,11 @@ require 'backend/dbh.php';
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#drinkModal">Enter a Drink</button>
         </div>
     </div>
+    <?php
+    if($_SESSION['userData'] == 0 ) {
+        echo '<h1>You must fill out your profile before beginning</h1>';
+    }
+    ?>
     <h1 id="currentBac"></h1>
     <h2 id="time2max"></h2>
     <!-- current BAC -->
@@ -113,27 +121,44 @@ require 'backend/dbh.php';
   echo "const datapoints = [";
   $firstDrink = new DateTime($drinkInfo[0]["dateTime"]);
   $lastDrink = new DateTime($drinkInfo[sizeof($drinkInfo)-1]["dateTime"]);
-$currBac = 0;
 $allBacs = [];
 $maxBac = [0,0];
-  for($i = $firstDrink; $i <= $lastDrink || $currBac > 0; $i->modify("+5 minutes")) {
-    if(array_key_exists($i->format("Y-m-d H:i:s"), $drinkTimes)) {
-        // echo 'yup';
+// var_dump($drinkInfo);
+// var_dump($drinkTimes);
+$timeFromLastDrink = 0;
+$bacCurrent = 0;
+$bacMax = 0;
+$abv = 0;
+  for($i = $firstDrink; $i <= $lastDrink || $bacCurrent > 0; $i->modify("+1 minutes")) {
+    
+    if(array_key_exists($i->format("Y-m-d H:i:s"), $drinkTimes)) {//drink is drank
         $lknvcx = json_decode($drinkInfo[$drinkTimes[$i->format("Y-m-d H:i:s")]]['drinkData']);
-        $lknvcx = $lknvcx[0] * $lknvcx[1]/100;
-        $bc = getBAC($currBac, 23.3334915 * $lknvcx);
-        //  
-        echo "{x: new Date('".str_replace(' ', 'T', $i->format('Y-m-d H:i:s'))."'), y: ".($bc)."},\r\n";
-    } else {
-        $bc = getBAC($currBac, 0);
-        echo "{x: new Date('".str_replace(' ', 'T', $i->format('Y-m-d H:i:s'))."'), y: ".($bc)."},\r\n";
+        $lknvcx2 = $lknvcx[0] * $lknvcx[1]/100;
+        $abv = $lknvcx[1];
+        $timeFromLastDrink = 0;
+        $bacMax += ($bacCurrent + (23.3334915 * $lknvcx2 / ($_SESSION['userData'][1] * 453.592 * ($_SESSION['userData'][2] == 1 ? .68 : .55)) * 100));
     }
-    $currBac = $bc;
-    if ($currBac > $maxBac[0]) {
-        $maxBac[0] = $currBac;
+       
+
+    if($timeFromLastDrink < (-.672 * $abv + 63)) { //absorbing
+        $bacCurrent += $bacMax / (-.672 * $abv + 63);
+    } else {
+        $bacCurrent -= .00025;
+        if($bacCurrent < 0) {
+            $bacCurrent = 0;
+        }
+        $bacMax = 0;
+    }
+    
+        echo "{x: new Date('".str_replace(' ', 'T', $i->format('Y-m-d H:i:s'))."'), y: ".($bacCurrent)."},\r\n";
+    
+    if ($bacCurrent > $maxBac[0]) {
+        $maxBac[0] = $bacCurrent;
         $maxBac[1] = str_replace(' ', 'T', $i->format('Y-m-d H:i:s'));
     }
-    $allBacs[str_replace(' ', 'T', $i->format('Y-m-d H:i:s'))] = $currBac;
+    $allBacs[str_replace(' ', 'T', $i->format('Y-m-d H:i:s'))] = $bacCurrent;
+    
+    $timeFromLastDrink++;
   }
   echo "];\r\n";
   echo "const allBacs = " . json_encode($allBacs);
@@ -194,13 +219,7 @@ function updateBac() {
         currentBac.innerHTML = "Current BAC: <b>"+allBacs[currTime].toFixed(3)+"</b>";
     }
     if(maxBacTime > currTime) {
-        time2max.innerHTML = "Time until <?=round($maxBac[0],3)?>: " + (new Date(maxBacTime) - new Date(currTime)) / 60000 + " minutes";
+        time2max.innerHTML = "Time until peak BAC (<?=round($maxBac[0],3)?>): " + (new Date(maxBacTime) - new Date(currTime)) / 60000 + " minutes";
     }
 }
 </script>
-<?php
-function getBAC($currentBac, $alcGrams) {
-    $bac = ($currentBac + ($alcGrams / ($_SESSION['userData'][1] * 453.592 * ($_SESSION['userData'][0] == 1 ? .68 : .55)) * 100) - .00075);
-    if ($bac < 0) {$bac = 0;}
-    return $bac;
-}
