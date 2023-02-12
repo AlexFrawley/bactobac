@@ -25,7 +25,7 @@ require 'backend/dbh.php';
 ?>
 <div>
 <main id="main" class="main">
-    <div class="row">
+    <div class="row mb-3">
         <div class="col text-center">
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#drinkModal">Enter a Drink</button>
         </div>
@@ -37,6 +37,7 @@ require 'backend/dbh.php';
     ?>
     <h1 id="currentBac"></h1>
     <h2 id="time2max"></h2>
+    <h2 id="time2zero"></h2>
     <!-- current BAC -->
     <!-- time until max bac (if increasing) -->
     <!-- time until 0 bac -->
@@ -129,6 +130,7 @@ $timeFromLastDrink = 0;
 $bacCurrent = 0;
 $bacMax = 0;
 $abv = 0;
+$endTime = 0;
   for($i = $firstDrink; $i <= $lastDrink || $bacCurrent > 0; $i->modify("+1 minutes")) {
     
     if(array_key_exists($i->format("Y-m-d H:i:s"), $drinkTimes)) {//drink is drank
@@ -159,6 +161,7 @@ $abv = 0;
     $allBacs[str_replace(' ', 'T', $i->format('Y-m-d H:i:s'))] = $bacCurrent;
     
     $timeFromLastDrink++;
+    $endTime = str_replace(' ', 'T', $i->format('Y-m-d H:i:s'));
   }
   echo "];\r\n";
   echo "const allBacs = " . json_encode($allBacs);
@@ -205,6 +208,7 @@ $abv = 0;
 
 let currentBac = document.getElementById("currentBac");
 let time2max = document.getElementById("time2max");
+let time2zero = document.getElementById("time2zero");
 let maxBacTime = "<?=$maxBac[1]?>"
 updateBac();
 setInterval(updateBac(), 60000);
@@ -220,6 +224,9 @@ function updateBac() {
     }
     if(maxBacTime > currTime) {
         time2max.innerHTML = "Time until peak BAC (<?=round($maxBac[0],3)?>): " + (new Date(maxBacTime) - new Date(currTime)) / 60000 + " minutes";
+    }
+    if(allBacs[currTime].toFixed(3) > .001 || maxBacTime > 0) {
+      time2zero.innerHTML = "Time until 0 BAC: " + (new Date("<?=$endTime?>") - new Date(currTime)) / 60000 + " minutes";
     }
 }
 </script>

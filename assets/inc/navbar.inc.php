@@ -3,7 +3,7 @@
 <div class="d-flex align-items-center justify-content-between" style="width:100%">
   <a href="." class="nav-link logo d-flex align-items-center">
     <!-- <img src="" alt="logo"><b style="padding-left:1rem">Home</b> -->
-    <b>Home</b>
+    <b>BACtoBAC</b>
   </a>
 
   <nav class="header-nav ms-auto">
