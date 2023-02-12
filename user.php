@@ -21,23 +21,24 @@ require 'assets/inc/navbar.inc.php';
       ?>
       <p>You're logged in as <b><?=$_SESSION['userUID']?></b></p>
       <h3>Enter your info here</h3>
-      <form action="" class="mb-3">
+      <form action="backend/userInfo.php" class="mb-3" method="POST">
         <div class="mb-1">
-          <label> Height</label>
-          <input class="form-control" type="text" name="height" placeholder="Height" autofocus required>
+          <label> Height (inches) </label>
+          <input class="form-control" type="text" name="height" placeholder="Height" autofocus required value="<?=$_SESSION['userData'][0]?>">
         </div>
         <div class="mb-1">
-          <label> Weight</label>
-          <input class="form-control" type="text" name="weight" placeholder="Height" autofocus required>
+          <label> Weight (lbs) </label>
+          <input class="form-control" type="text" name="weight" placeholder="Height" autofocus required value="<?=$_SESSION['userData'][1]?>">
         </div>
         <div class="mb-1">
           <label> Sex</label>
           <select class="form-select" name="sex">
-            <option value="male">Male</option>
-            <option value="female">Female</option>
+            <option value="1"<?=$_SESSION['userData'][2] == 1 ? "selected" : ""?>>Male</option>
+            <option value="2"<?=$_SESSION['userData'][2] == 2 ? "selected" : ""?>>Female</option>
           </select>
         </div>
-      </form>
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form><br><br>
       <a href="backend/accounts/logout.inc.php" class="btn btn-danger">Logout</a>
       <?php
     } else {

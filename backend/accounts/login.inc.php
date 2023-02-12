@@ -29,9 +29,10 @@ if (isset($_POST['login-submit'])) {
                     exit();
                 } else if ($pwdCheck == true) {
                     session_start(['cookie_lifetime' => 172800,]);
+                    $_SESSION['userID'] = $row['idUsers'];
                     $_SESSION['userUID'] = $row['uidUsers'];
                     $_SESSION['uidEmail'] = $row['emailUsers'];
-                    $_SESSION['userData'] = $row['userData'];
+                    $_SESSION['userData'] = json_decode($row['userData']);
                     $_SESSION['token'] = bin2hex(random_bytes(32));
                     header("Location: ../../user.php?login=success"); 
                     exit();

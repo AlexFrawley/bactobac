@@ -27,6 +27,7 @@ require 'backend/dbh.php';
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#drinkModal">Enter a Drink</button>
         </div>
     </div>
+    <h1 id="currentBac"></h1>
     <!-- current BAC -->
     <!-- time until max bac (if increasing) -->
     <!-- time until 0 bac -->
@@ -41,7 +42,7 @@ require 'backend/dbh.php';
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <form method="POST" action="">
+        <form method="POST" action="backend/newDrink.inc.php">
           <div class="mb-1">
             <select class="form-select" onchange="selectDrink(this)">
                 <option disabled selected>Select a drink</option>
@@ -59,11 +60,15 @@ require 'backend/dbh.php';
           </div>
           <div class="mb-1">
             <label class="form-label">Volume (fluid ounces) </label>
-            <input type="number" step=".1" name="volume" class="form-control">
+            <input type="number" step=".1" name="volume" id="volume" class="form-control">
           </div>
           <div class="mb-1">
             <label class="form-label">Percent ABV </label>
-            <input type="number" step=".1" name="percentABV" class="form-control">
+            <input type="number" step=".1" name="percentABV" id="percent" class="form-control">
+          </div>
+          <div class="mb-1">
+            <label class="form-label">Minutes Since Drink</label>
+            <input type="number" name="mins" class="form-control">
           </div>
           <button type="submit" class="btn btn-primary" name="submit">Submit</button>
         </form>
@@ -75,23 +80,62 @@ require 'backend/dbh.php';
   </div>
 </div>
 <script>
-    const volumeField = 
+    const volumeField = document.getElementById('volume');
+    const percentField = document.getElementById('percent');
+    const allDrinks = <?=json_encode($allDrinks)?>;
+
     function selectDrink(drink) {
-        console.log(drink.value);
+        volumeField.value = allDrinks[drink.value]['volume'];
+        percentField.value = allDrinks[drink.value]['percentABV'];
     }
 
 
   const ctx = document.getElementById('chart');
 
-  const datapoints = [
-    // <?php
-    // $sql = $conn->prepare("SELECT * FROM `drinksDrank` WHERE `userID`=? AND ")
-    // ?>
-    // {x: new Date('<?=Date('Y-m-d')."T".Date('H:i', strtotime('-1 hour'))?>'), y: 3},
-    // {x: new Date('<?=Date('Y-m-d')."T".Date('H:i')?>'), y: 4},
-    // {x: new Date('<?=Date('Y-m-d')."T".Date('H:i')?>'), y: 5},
-    // {x: new Date('<?=Date('Y-m-d')."T".Date('H:i')?>'), y: 6},
-  ];
+    // (volume * percent * converToGrams) / (bodyWeight(grams)*sexConstant) * 100
+    <?php
+    if(!$loggedIn) {
+        die();
+    }
+    $stmt = $conn->prepare("SELECT * FROM `drinksDrank` WHERE `userID`=? AND `dateTime` > DATE_SUB(NOW(), INTERVAL 8 HOUR) ORDER BY dateTime asc");
+    $stmt->bind_param("i", $_SESSION['userID']);
+    $stmt->execute() && $re = $stmt->get_result();
+    $drinkInfo = [];
+    $drinkTimes = [];
+    $index = 0;
+    while($r = $re->fetch_assoc()) {
+        array_push($drinkInfo, $r);
+        $drinkTimes[$r['dateTime']] = $index++;
+        // array_push($drinkTimes, [$r['dateTime'], $index++]);
+    }
+    ?>
+  
+  <?php
+  echo "const datapoints = [";
+//   var_dump($drinkInfo);
+  $firstDrink = new DateTime($drinkInfo[0]["dateTime"]);
+  $lastDrink = new DateTime($drinkInfo[sizeof($drinkInfo)-1]["dateTime"]);
+//   var_dump($firstDrink);
+$currBac = 0;
+$allBacs = [];
+  for($i = $firstDrink; $i <= $lastDrink || $currBac > 0; $i->modify("+5 minutes")) {
+    if(array_key_exists($i->format("Y-m-d H:i:s"), $drinkTimes)) {
+        // echo 'yup';
+        $lknvcx = json_decode($drinkInfo[$drinkTimes[$i->format("Y-m-d H:i:s")]]['drinkData']);
+        $lknvcx = $lknvcx[0] * $lknvcx[1]/100;
+        $bc = getBAC($currBac, 23.3334915 * $lknvcx);
+        //  
+        echo "{x: new Date('".str_replace(' ', 'T', $i->format('Y-m-d H:i:s'))."'), y: ".($bc)."},\r\n";
+    } else {
+        $bc = getBAC($currBac, 0);
+        echo "{x: new Date('".str_replace(' ', 'T', $i->format('Y-m-d H:i:s'))."'), y: ".($bc)."},\r\n";
+    }
+    $currBac = $bc;
+    $allBacs[str_replace(' ', 'T', $i->format('Y-m-d H:i:s'))] = $currBac;
+  }
+  echo "];\r\n";
+echo "const allBacs = " . json_encode($allBacs);
+  ?>
 
   new Chart(ctx, {
     type: 'line',
@@ -106,7 +150,7 @@ require 'backend/dbh.php';
     options: {
         scales: {
             x: {
-                type: "timeseries",
+                type: "time", //timeseries
                 time: {
                     unit: 'minute'
                 },
@@ -131,4 +175,36 @@ require 'backend/dbh.php';
         }
     }
   });
+
+let currentBac = document.getElementById("currentBac");
+setInterval(function() {
+    // currentBac = allBacs['2023-02-12 01:50:00']
+    currTime = (new Date());
+    currTime = new Date(new Date().setTime(currTime.getTime()));
+
+
+    
+    // currTime = currTime.toLocaleString('en-US', {
+    //     timeZone: 'America/New_York'
+    // });
+    currTime = currTime.toISOString().split(":");
+
+    currTime = currTime[0].split("T")[0]+"T"+(currTime[0].split("T")[1]-5).toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false}) +":"+ Math.ceil(currTime[1]/5)*5+":00";
+
+
+
+    // currTime = currTime[0] + ":" + currTime[1] + ":00";
+    if (allBacs[currTime] == undefined) {
+        currentBac.textContent = allBacs[currTime];
+    } else {
+        currentBac.innerHTML = "Current BAC: <b>"+allBacs[currTime].toFixed(3)+"</b>";
+    }
+    // currentBac.textContent = currTime;
+}, 1000);
 </script>
+<?php
+function getBAC($currentBac, $alcGrams) {
+    $bac = ($currentBac + ($alcGrams / ($_SESSION['userData'][1] * 453.592 * ($_SESSION['userData'][0] == 1 ? .68 : .55)) * 100) - .00075);
+    if ($bac < 0) {$bac = 0;}
+    return $bac;
+}
