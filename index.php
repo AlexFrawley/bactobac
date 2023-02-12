@@ -60,7 +60,7 @@ require 'backend/dbh.php';
                 $allDrinks = [];
                 if ($stmt->execute() && $r = $stmt->get_result()) {
                     while($x = $r->fetch_assoc()) {
-                        array_push($allDrinks, $x);
+                        $allDrinks[$x['drinkID']] = $x;
                         echo "<option value='".$x['drinkID']."'>".$x['drinkName']."</option>";
                     }
                 }
