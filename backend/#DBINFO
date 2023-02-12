@@ -1,0 +1,22 @@
+CREATE TABLE `users` (
+  `idUsers` int(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,
+  `uidUsers` tinytext NOT NULL,
+  `emailUsers` tinytext NOT NULL,
+  `pwdUsers` longtext NOT NULL,
+  `userData` TEXT NOT NULL
+);
+
+CREATE TABLE `drinksDrank` (
+`drinksDrankID` int(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,
+`userID` int(11) NOT NULL,
+`dateTime` DATETIME NOT NULL,
+`drinkData` TINYTEXT NOT NULL
+);
+
+CREATE TABLE `drinks` (
+`drinkID` int PRIMARY KEY NOT NULL AUTO_INCREMENT,
+`drinkName` TINYTEXT NOT NULL,
+`volume` DOUBLE NOT NULL,
+`percentABV` DOUBLE NOT NULL,
+`img` TINYTEXT NOT NULL
+);
